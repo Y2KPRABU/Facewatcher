@@ -69,7 +69,7 @@ namespace FaceFinder
         public  IList<PersonGroup> GetAllPersonGroups()
         {
            
-               PersonGroup pgx  = new() { Name = "sun", PersonGroupId = "g1", UserData = "" };
+               PersonGroup pgx  = new() { Name = "sun", PersonGroupId = PERSONGROUPID, UserData = "" };
            List< PersonGroup> pgxList= new List<PersonGroup>();
            
            pgxList.Add(pgx);
@@ -151,7 +151,7 @@ namespace FaceFinder
 
             try
             {
-                IList<Person> people =
+               IList<Person> people =
                     await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID);
 
                 // Get Person if it exists.
@@ -168,7 +168,7 @@ namespace FaceFinder
                         return;
                     }
                 }
-
+    await faceClient.PersonGroup.CreateAsync(PERSONGROUPID, personName,String.Empty);
                // Person doesn't exist, create it.
                 await faceClient.PersonGroupPerson.CreateAsync(PERSONGROUPID, personName);
 

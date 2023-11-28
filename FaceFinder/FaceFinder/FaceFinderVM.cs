@@ -423,7 +423,7 @@ namespace FaceFinder
             isFindFacesButtonEnabled = true;
 
             // TODO: without this statement, app suspends updating UI until explicit focus change (mouse or key event)
-            await Task.Delay(1);
+            await Task.Delay(1000);
         }
         private void CancelFindFaces()
         {
@@ -458,6 +458,7 @@ namespace FaceFinder
                     using (FileStream stream = file.OpenRead())
                     {
                         faceList = await faceProcessor.GetFaceListAsync(stream);
+                         await Task.Delay(1000);
                     }
 
                     // Ignore image files without a detected face
@@ -496,6 +497,7 @@ namespace FaceFinder
                             {
                                 bool isFaceMatch = await faceProcessor.MatchFaceAsync(
                                     (Guid)face.FaceId, newImage);
+                                     await Task.Delay(1000);
                                 isImageMatch |= isFaceMatch;
                             }
                         }
