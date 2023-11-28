@@ -30,9 +30,9 @@ namespace FaceFinder
 
         // Defaults associated with free tier, S0.
         private const string _computerVisionEndpoint =
-            "https://westcentralus.api.cognitive.microsoft.com";
+            "https://sunvision2.cognitiveservices.azure.com/";
         private const string _faceEndpoint =
-            "https://westcentralus.api.cognitive.microsoft.com";
+            "https://sundarface.cognitiveservices.azure.com/";
 
         private readonly string male = Gender.Male.ToString();
         private readonly string female = Gender.Female.ToString();
@@ -54,14 +54,14 @@ namespace FaceFinder
             set => SetProperty(ref splashVisibilty, value);
         }
 
-        private string computerVisionKey = string.Empty;
+        private string computerVisionKey = "5e78b106c2994cb7864ba96362d2b581";
         public string ComputerVisionKey
         {
             get => computerVisionKey;
             set
             {
                 SetProperty(ref computerVisionKey, value);
-                SaveDataToIsolatedStorage();
+                //SaveDataToIsolatedStorage();
             }
         }
         private string computerVisionEndpoint = _computerVisionEndpoint;
@@ -71,17 +71,17 @@ namespace FaceFinder
             set
             {
                 SetProperty(ref computerVisionEndpoint, value);
-                SaveDataToIsolatedStorage();
+                //SaveDataToIsolatedStorage();
             }
         }
-        private string faceKey = string.Empty;
+        private string faceKey = "0fac2e6c22c84b4abb0d7fd3ef45d274";
         public string FaceKey
         {
             get => faceKey;
             set
             {
                 SetProperty(ref faceKey, value);
-                SaveDataToIsolatedStorage();
+                //SaveDataToIsolatedStorage();
             }
         }
         private string faceEndpoint = _faceEndpoint;
@@ -91,7 +91,7 @@ namespace FaceFinder
             set
             {
                 SetProperty(ref faceEndpoint, value);
-                SaveDataToIsolatedStorage();
+                //SaveDataToIsolatedStorage();
             }
         }
 
@@ -379,7 +379,7 @@ namespace FaceFinder
 
         public FaceFinderVM()
         {
-            GetDataFromIsolatedStorage();
+            //GetDataFromIsolatedStorage();
             ImageInfos = new ObservableCollection<ImageInfo>();
             GroupInfos = new ObservableCollection<ImageInfo>();
             GroupNames = new ObservableCollection<string>();
@@ -481,14 +481,14 @@ namespace FaceFinder
 
                         foreach (DetectedFace face in faceList)
                         {
-                            double? age = face.FaceAttributes.Age;
+                          /*  double? age = face.FaceAttributes.Age;
                             string gender = face.FaceAttributes.Gender.ToString();
 
                             if (searchAge && ((age < MinAge) || (age > MaxAge))) { continue; }
                             if (isMale && !gender.Equals(male)) { continue; }
                             if (isFemale && !gender.Equals(female)) { continue; }
                             attributes += gender + " " + age + "   ";
-
+*/
                             matchedCount++;
 
                             // If match on face, call faceProcessor
@@ -599,7 +599,12 @@ namespace FaceFinder
         // Called by IsPersonComboBoxOpen setter
         private async Task GetPersonNamesAsync()
         {
-            IList<string> personNames = await faceProcessor.GetAllPersonNamesAsync();
+            IList<string> personNames = new List<string>
+            {
+                "Sundar",
+                "Prabu"
+            };
+            
             foreach (string name in personNames)
             {
                 if (!GroupNames.Contains(name))
@@ -621,53 +626,8 @@ namespace FaceFinder
             ShowFaces = true;
         }
 
-        private void GetDataFromIsolatedStorage()
-        {
-            using (IsolatedStorageFile isoStore = IsolatedStorageFile.GetStore(
-                IsolatedStorageScope.User | IsolatedStorageScope.Assembly, null, null))
-            {
-                if (!isoStore.FileExists(isolatedStorageFile))
-                {
-                    return;
-                }
+     
 
-                using (var reader = new StreamReader(isoStore.OpenFile(isolatedStorageFile,
-                    FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
-                {
-                    ComputerVisionKey = reader.ReadLine();
-                    ComputerVisionEndpoint = reader.ReadLine();
-                    FaceKey = reader.ReadLine();
-                    FaceEndpoint = reader.ReadLine();
-                }
-
-                if (ComputerVisionEndpoint.Equals(string.Empty))
-                {
-                    ComputerVisionEndpoint = _computerVisionEndpoint;
-                }
-                if (FaceEndpoint.Equals(string.Empty))
-                {
-                    FaceEndpoint = _faceEndpoint;
-                }
-            }
-        }
-
-        private void SaveDataToIsolatedStorage()
-        {
-            using (IsolatedStorageFile isoStore = IsolatedStorageFile.GetStore(
-                IsolatedStorageScope.User | IsolatedStorageScope.Assembly, null, null))
-            {
-                using (var writer = new StreamWriter(isoStore.OpenFile(isolatedStorageFile,
-                    FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite)))
-                {
-                    writer.WriteLine(ComputerVisionKey);
-                    writer.WriteLine(ComputerVisionEndpoint);
-                    writer.WriteLine(FaceKey);
-                    writer.WriteLine(FaceEndpoint);
-                }
-            }
-
-            SetupVisionServices();
-        }
 
         private void SelectFolder()
         {

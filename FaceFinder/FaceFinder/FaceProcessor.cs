@@ -52,7 +52,7 @@ namespace FaceFinder
             {
                 return await faceClient.Face.DetectWithStreamAsync(stream, true, false,
                     new FaceAttributeType[]
-                        { FaceAttributeType.Age, FaceAttributeType.Gender });
+                        { FaceAttributeType.Glasses});
             }
             catch (APIErrorException e)
             {
@@ -66,18 +66,14 @@ namespace FaceFinder
         /// Returns all PersonGroup's associated with the Face subscription key
         /// </summary>
         /// <returns>A list of PersonGroup's or an empty list</returns>
-        public async Task<IList<PersonGroup>> GetAllPersonGroupsAsync()
+        public  IList<PersonGroup> GetAllPersonGroups()
         {
-            try
-            {
-                return await faceClient.PersonGroup.ListAsync();
-            }
-            catch (APIErrorException e)
-            {
-                Debug.WriteLine("GetAllPersonGroupsAsync: " + e.Message);
-                MessageBox.Show(e.Message, "GetAllPersonGroupsAsync");
-            }
-            return new List<PersonGroup>();
+           
+               PersonGroup pgx  = new() { Name = "sun", PersonGroupId = "g1", UserData = "" };
+           List< PersonGroup> pgxList= new List<PersonGroup>();
+           
+           pgxList.Add(pgx);
+            return pgxList;
         }
 
         /// <summary>
