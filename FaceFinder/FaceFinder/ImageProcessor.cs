@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -42,7 +43,7 @@ namespace FaceFinder
                 newImage.ThumbUrl = thumbUrl;
                 return thumbUrl;
             }
-            catch (ComputerVisionErrorException cve)
+            catch (Exception cve)
             {
                 Debug.WriteLine("ProcessImageFileForThumbAsync: " + cve.Message);
                 return string.Empty;
@@ -66,7 +67,7 @@ namespace FaceFinder
                 }
                 newImage.Caption = caption;
             }
-            catch (ComputerVisionErrorException cve)
+            catch (Exception cve)
             {
                 Debug.WriteLine("ProcessImageFileForCaptionAsync: " + cve.Message);
             }
@@ -103,7 +104,7 @@ namespace FaceFinder
                     newImage.OcrResult = ocrResult;
                 }
             }
-            catch (ComputerVisionErrorException cve)
+            catch (Exception cve)
             {
                 Debug.WriteLine("ProcessImageFileForTextAsync: " + cve.Message);
             }

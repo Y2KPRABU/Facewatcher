@@ -150,7 +150,7 @@ namespace FaceFinder
             string personName = ConfigurePersonName(name);
 
             try
-            {
+            {  
                IList<Person> people =
                     await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID);
 
