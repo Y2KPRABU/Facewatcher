@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:FaceFinder"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         mc:Ignorable="d"
-        Title="Face Finder" Width="1310" Height="900">
+        Title="AI Sentinel Monitor" Width="1310" Height="900">
     <Window.DataContext>
         <local:FaceFinderVM/>
     </Window.DataContext>
@@ -17,8 +17,8 @@
         <!-- personFaceList -->
         <DataTemplate x:Key="PersonFaceTemplate" DataType="ImageInfo">
             <StackPanel Orientation="Vertical"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" Width="120">
-                <Image x:Name="personThumbNail" Height="120" Stretch="UniformToFill">
+                        HorizontalAlignment="Center" VerticalAlignment="Center" Width="150">
+                <Image x:Name="personThumbNail" Height="150" Stretch="UniformToFill">
                     <Image.Source>
                         <BitmapImage CacheOption="OnLoad" UriSource="{Binding FilePath}" />
                     </Image.Source>
@@ -57,12 +57,16 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="160"/>
             <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="300"/>
+
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -72,17 +76,34 @@
                  ItemTemplate="{StaticResource PersonFaceTemplate}"
                  HorizontalAlignment="Center"/>
 
-        <Image Name="splashImage" Grid.Row="0" Grid.Column="1" Margin="4"
-               Source="Assets/FaceFinder.jpg" Panel.ZIndex="{Binding SplashZIndex}"
-               Visibility="{Binding SplashVisibilty, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-        <ListBox Name="thumbList" Grid.Row="0" Grid.Column="1" SelectionMode="Extended" Margin="8,4"
+        <ListBox Name="thumbList" Grid.Row="0" Grid.Column="1" SelectionMode="Extended" Margin="8,4,8,10"
                  ItemsSource="{Binding ImageInfos}"
                  ItemTemplate="{StaticResource ImageInfoTemplate}"
                  ItemsPanel="{StaticResource ImagePanelTemplate}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+        <ListBox Name="SafePersonList" Grid.Row="0" Grid.Column="2" SelectionMode="Extended" Margin="8,4,8,10"
+           ItemsSource="{Binding ImageInfos}"
+           ItemTemplate="{StaticResource ImageInfoTemplate}"
+           ItemsPanel="{StaticResource ImagePanelTemplate}"
+           ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+        <ListView x:Name="TvBox"  Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Top"
+            ItemsSource="{Binding ImagesToScan}">
 
-        <Expander Name="settings" Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" ExpandDirection="Left" Panel.ZIndex="2" Opacity=".96"
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="5" HorizontalAlignment="Center"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Vertical" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                        <Image Source="{Binding ImageData}" Width="100" Height="100" Margin="0,2,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Top" Stretch="UniformToFill" />
+                        <TextBlock Text="{Binding Title}" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+        <Expander Name="settings" Grid.Row="0" Grid.Column="3" Grid.RowSpan="2"  ExpandDirection="Left" Panel.ZIndex="2" Opacity=".96"
                   Margin="0,10,12,0" Padding="10,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Top" IsExpanded="{Binding IsSettingsExpanded}">
             <Border CornerRadius="6" Padding="6"
                     BorderBrush="Gray" Background="AliceBlue" BorderThickness="2">
@@ -184,7 +205,7 @@
                    HorizontalAlignment="Center" VerticalAlignment="Top" TextAlignment="Center"
                    FontSize="13" FontWeight="Bold" Margin="4,0,0,4" Foreground="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
 
-        <Grid Name="bottomPanel" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" Margin="0,2,0,4">
+        <Grid Name="bottomPanel" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" HorizontalAlignment="Center" Margin="0,2,0,4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
@@ -251,5 +272,6 @@
             <TextBlock Grid.Row="1" Grid.Column="6" Name="faceImageCount" Text="{Binding FaceImageCount, Mode=TwoWay}"/>
             <TextBlock Grid.Row="1" Grid.Column="7" Name="faceCount" Text="{Binding FaceCount, Mode=TwoWay}"/>
         </Grid>
+       
     </Grid>
 </Window>

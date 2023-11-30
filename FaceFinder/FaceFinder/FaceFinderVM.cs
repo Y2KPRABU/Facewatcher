@@ -376,6 +376,7 @@ namespace FaceFinder
         public ObservableCollection<ImageInfo> ImageInfos { get; set; }
         public ObservableCollection<ImageInfo> GroupInfos { get; set; }
         public ObservableCollection<string> GroupNames { get; set; }
+        public ObservableCollection<MovieData> ImagesToScan { get; set; }
 
         public FaceFinderVM()
         {
@@ -383,6 +384,8 @@ namespace FaceFinder
             ImageInfos = new ObservableCollection<ImageInfo>();
             GroupInfos = new ObservableCollection<ImageInfo>();
             GroupNames = new ObservableCollection<string>();
+            ImagesToScan = new ObservableCollection<MovieData>();
+
             SetupVisionServices();
         }
 
@@ -441,13 +444,13 @@ namespace FaceFinder
             {
                 Directory.CreateDirectory(thumbnailsFolder);
             }
-
+          
             ProcessingCount = 0;    // # of image files processed
             SearchedCount = 0;      // images containing a face
             FaceImageCount = 0;     // images with a face matching the search criteria
             FaceCount = 0;          // images with a face matching the search criteria and selected person
 
-            IList<DetectedFace> faceList;
+            IList<DetectedFace> detectedfaceList;
             foreach (FileInfo file in imageFiles)
             {
                 if (cancellationToken.IsCancellationRequested) { return; }
@@ -457,12 +460,12 @@ namespace FaceFinder
                 {
                     using (FileStream stream = file.OpenRead())
                     {
-                        faceList = await faceProcessor.GetFaceListAsync(stream);
+                        detectedfaceList = await faceProcessor.GetFaceListAsync(stream);
                          await Task.Delay(1000);
                     }
 
                     // Ignore image files without a detected face
-                    if (faceList.Count > 0)
+                    if (detectedfaceList.Count > 0)
                     {
                         SearchedCount++;
                         int matchedCount = 0;
@@ -480,7 +483,7 @@ namespace FaceFinder
                         string attributes = string.Empty;
                         bool isImageMatch = false;
 
-                        foreach (DetectedFace face in faceList)
+                        foreach (DetectedFace face in detectedfaceList)
                         {
                           /*  double? age = face.FaceAttributes.Age;
                             string gender = face.FaceAttributes.Gender.ToString();
@@ -601,17 +604,45 @@ namespace FaceFinder
         // Called by IsPersonComboBoxOpen setter
         private async Task GetPersonNamesAsync()
         {
-            IList<string> personNames = new List<string>
+            if (GroupNames.Count > 0)
+                return;
+            // Wait 2 seconds
+            await Task.Delay(2000);
+           
+                 IList<Person> personNames = await faceProcessor.GetAllRegdPeopleAsync();
+            if (personNames == null)
             {
-                "Sundar",
-                "Prabu"
-            };
-            
-            foreach (string name in personNames)
+                MessageBox.Show("No Registered People yet");
+                return;
+            }
+            foreach (Person person in personNames)
             {
-                if (!GroupNames.Contains(name))
+                if (!GroupNames.Contains(person.Name))
                 {
-                    GroupNames.Add(name);
+                    GroupNames.Add(person.Name);
+                    IList<string> facePaths= await faceProcessor.GetFaceImagePathsAsync(person);
+                    if (facePaths == null)
+
+                    {
+                        if (string.IsNullOrEmpty(person.UserData))
+                            continue;
+                        else
+                        {
+                            ImageInfo groupInfo = new ImageInfo();
+                            groupInfo.FilePath = person.UserData;
+                            GroupInfos.Add(groupInfo);
+                        }
+                    }
+                    else
+                        // Get all facepaths for the person
+                        foreach (string facePath in facePaths)
+                        {
+                            ImageInfo groupInfo = new ImageInfo(); 
+                            groupInfo.FilePath = facePath;
+                            GroupInfos.Add(groupInfo);
+                        }
+                        
+                    
                 }
             }
         }
@@ -628,8 +659,8 @@ namespace FaceFinder
             ShowFaces = true;
         }
 
-     
 
+        #region ImageUploadfunctions
 
         private void SelectFolder()
         {
@@ -644,7 +675,7 @@ namespace FaceFinder
                 isFindFacesButtonEnabled = false;
                 return;
             }
-
+            
             // Hide splash image.
             SplashZIndex = 0;
             SplashVisibilty = false;
@@ -672,7 +703,23 @@ namespace FaceFinder
                 return folderPath;
             }
         }
+        public class MovieData
+        {
+            private string _Title;
+            public string Title
+            {
+                get { return this._Title; }
+                set { this._Title = value; }
+            }
 
+            private BitmapImage _ImageData;
+            public BitmapImage ImageData
+            {
+                get { return this._ImageData; }
+                set { this._ImageData = value; }
+            }
+
+        }
         private FileInfo[] GetImageFiles(string folder)
         {
             DirectoryInfo di = new DirectoryInfo(folder);
@@ -686,8 +733,16 @@ namespace FaceFinder
                 bmpFiles.Concat(gifFiles).Concat(jpgFiles).Concat(pngFiles).ToArray();
 
             ImageCount = allImageFiles.Length;
+            foreach (FileInfo file in allImageFiles)
+            {
+                MovieData newImage = new MovieData();
+                newImage.ImageData = new BitmapImage(new Uri( file.DirectoryName + Path.DirectorySeparatorChar + file.Name));
+                newImage.Title = file.Name;
 
+                ImagesToScan.Add(newImage);
+            }
             return allImageFiles;
         }
+#endregion
     }
 }

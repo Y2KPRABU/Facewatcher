@@ -62,41 +62,26 @@ namespace FaceFinder
             return Array.Empty<DetectedFace>();
         }
 
-        /// <summary>
-        /// Returns all PersonGroup's associated with the Face subscription key
-        /// </summary>
-        /// <returns>A list of PersonGroup's or an empty list</returns>
-        public  IList<PersonGroup> GetAllPersonGroups()
-        {
-           
-               PersonGroup pgx  = new() { Name = "sun", PersonGroupId = PERSONGROUPID, UserData = "" };
-           List< PersonGroup> pgxList= new List<PersonGroup>();
-           
-           pgxList.Add(pgx);
-            return pgxList;
-        }
+      
 
         /// <summary>
         /// Returns all Person.Name's associated with PERSONGROUPID
         /// </summary>
         /// <returns>A list of Person.Name's or an empty list</returns>
-        public async Task<IList<string>> GetAllPersonNamesAsync()
+        public async Task<IList<Person>> GetAllRegdPeopleAsync()
         {
-            IList<string> names = new List<string>();
+            IList<Person> personNames = null;
             try
             {
-                IList<Person> personNames = await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID);
-                foreach(Person person in personNames)
-                {
-                    // Remove appended "-group".
-                    names.Add(person.Name.Replace("_", " "));
-                }
+                personNames = await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID);
+              
             }
             catch (APIErrorException e)
             {
                 Debug.WriteLine("GetAllPersonNamesAsync: " + e.Message);
             }
-            return names;
+            
+            return personNames;
         }
 
         /// <summary>
@@ -198,7 +183,7 @@ namespace FaceFinder
                 return;
             }
 
-            IList<string> faceImagePaths = await GetFaceImagePathsAsync();
+            IList<string> faceImagePaths = await GetFaceImagePathsAsync(searchedForPerson);
 
             foreach (ImageInfo info in selectedItems)
             {
@@ -267,7 +252,7 @@ namespace FaceFinder
         /// <param name="GroupInfos">On success, contains image info associated with searchedForPerson</param>
         public async Task DisplayFacesAsync(ObservableCollection<ImageInfo> GroupInfos)
         {
-            IList<string> faceImagePaths = await GetFaceImagePathsAsync();
+            IList<string> faceImagePaths = await GetFaceImagePathsAsync(searchedForPerson);
             if(faceImagePaths == Array.Empty<string>()) { return; }
 
             foreach (string path in faceImagePaths)
@@ -341,15 +326,15 @@ namespace FaceFinder
 
         // PersistedFace.UserData stores the associated image file path.
         // Returns the image file paths associated with each PersistedFace
-        private async Task<IList<string>> GetFaceImagePathsAsync()
+        public async Task<IList<string>> GetFaceImagePathsAsync(Person searchedPerson)
         {
             IList<string> faceImagePaths = new List<string>();
 
-            IList<Guid> persistedFaceIds = searchedForPerson.PersistedFaceIds;
+            IList<Guid> persistedFaceIds = searchedPerson.PersistedFaceIds;
             foreach(Guid pfid in persistedFaceIds)
             {
                 PersistedFace face = await faceClient.PersonGroupPerson.GetFaceAsync(
-                    PERSONGROUPID, searchedForPerson.PersonId, pfid);
+                    PERSONGROUPID, searchedPerson.PersonId, pfid);
                 if (!string.IsNullOrEmpty(face.UserData))
                 {
                     string imagePath = face.UserData;
@@ -361,7 +346,7 @@ namespace FaceFinder
                     else
                     {
                         await faceClient.PersonGroupPerson.DeleteFaceAsync(
-                            PERSONGROUPID, searchedForPerson.PersonId, pfid);
+                            PERSONGROUPID, searchedPerson.PersonId, pfid);
                         Debug.WriteLine("GetFaceImagePathsAsync, file not found, deleting reference: " + imagePath);
                     }
                 }
