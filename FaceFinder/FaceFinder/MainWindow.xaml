@@ -31,22 +31,16 @@
         <DataTemplate x:Key="ImageInfoTemplate" DataType="ImageInfo">
             <StackPanel Orientation="Vertical" ToolTip="{Binding Caption}"
                         HorizontalAlignment="Center" VerticalAlignment="Center" Width="100">
-                <Image x:Name="thumbNail" Width="100" Height="100" Margin="0,2,0,0" Stretch="UniformToFill"
-                       Visibility="{Binding ElementName=getThumbnail, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Image x:Name="thumbNail" Width="100" Height="100" Margin="0,2,0,0" Stretch="UniformToFill">
                     <Image.Source>
                         <BitmapImage CacheOption="OnLoad" UriSource="{Binding ThumbUrl}"/>
                     </Image.Source>
                 </Image>
-                <TextBlock Text="{Binding FileName}"
-                           Visibility="{Binding ElementName=displayFileName, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                <TextBlock Text="{Binding Attributes}"
-                           Visibility="{Binding ElementName=displayAttributes, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                <TextBlock Text="{Binding Metadata}"
-                           Visibility="{Binding ElementName=getMetadata, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                <TextBlock Text="{Binding OcrResult}"
-                           Visibility="{Binding ElementName=getOCR, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                <TextBlock Text="{Binding Confidence}"
-                           Visibility="{Binding ElementName=matchPerson, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <TextBlock Text="{Binding FileName}"/>
+                <TextBlock Text="{Binding Attributes}"/>
+                <TextBlock Text="{Binding Metadata}"/>
+                <TextBlock Text="{Binding OcrResult}"/>
+                <TextBlock Text="{Binding Confidence}"/>
                 <!--TextBlock Text="{Binding Caption}"/-->
             </StackPanel>
         </DataTemplate>
@@ -71,22 +65,21 @@
         </Grid.RowDefinitions>
 
         <ListBox Name="personFaceList" Grid.Row="0" Grid.Column="0" Width="134" Margin="6,4,4,4"
-                 Visibility="{Binding ElementName=showFaces, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}"
                  ItemsSource="{Binding GroupInfos}"
                  ItemTemplate="{StaticResource PersonFaceTemplate}"
                  HorizontalAlignment="Center"/>
 
         <ListBox Name="thumbList" Grid.Row="0" Grid.Column="1" SelectionMode="Extended" Margin="8,4,8,10"
-                 ItemsSource="{Binding ImageInfos}"
+                 ItemsSource="{Binding ImagesWithFaces}"
                  ItemTemplate="{StaticResource ImageInfoTemplate}"
                  ItemsPanel="{StaticResource ImagePanelTemplate}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
         <ListBox Name="SafePersonList" Grid.Row="0" Grid.Column="2" SelectionMode="Extended" Margin="8,4,8,10"
-           ItemsSource="{Binding ImageInfos}"
+           ItemsSource="{Binding ImagesMatched}"
            ItemTemplate="{StaticResource ImageInfoTemplate}"
            ItemsPanel="{StaticResource ImagePanelTemplate}"
            ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
-        <ListView x:Name="TvBox"  Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Top"
+        <ListView x:Name="TvBox"  Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch"  VerticalAlignment="Stretch"
             ItemsSource="{Binding ImagesToScan}">
 
             <ItemsControl.ItemsPanel>
@@ -103,53 +96,33 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+        <ListBox Name="intruderPersonList" Grid.Row="1" Grid.Column="2" SelectionMode="Extended" Margin="8,4,8,10"
+     ItemsSource="{Binding ImagesIntruders}"
+     ItemTemplate="{StaticResource ImageInfoTemplate}"
+     ItemsPanel="{StaticResource ImagePanelTemplate}"
+     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
         <Expander Name="settings" Grid.Row="0" Grid.Column="3" Grid.RowSpan="2"  ExpandDirection="Left" Panel.ZIndex="2" Opacity=".96"
                   Margin="0,10,12,0" Padding="10,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Top" IsExpanded="{Binding IsSettingsExpanded}">
             <Border CornerRadius="6" Padding="6"
                     BorderBrush="Gray" Background="AliceBlue" BorderThickness="2">
                 <StackPanel Orientation="Vertical" Margin="0,-10,0,0" Grid.ColumnSpan="2">
-                    <TextBlock Text="Computer Vision subscription key" Margin="0,10,0,0"/>
-                    <TextBox Text="{Binding ComputerVisionKey, Mode=TwoWay}" MinWidth="200" HorizontalAlignment="Left" MaxLength="32"/>
-                    <TextBlock Text="Computer Vision endpoint" Margin="0,4,0,0"/>
-                    <TextBox Text="{Binding ComputerVisionEndpoint, Mode=TwoWay}" MinWidth="260"/>
-
-                    <TextBlock Text="Face subscription key" Margin="0,10,0,0"/>
-                    <TextBox Text="{Binding FaceKey, Mode=TwoWay}" MinWidth="200" HorizontalAlignment="Left" MaxLength="32"/>
-                    <TextBlock Text="Face endpoint" Margin="0,4,0,0"/>
-                    <TextBox Text="{Binding FaceEndpoint, Mode=TwoWay}" MinWidth="260"/>
-
+               
                     <Separator Margin="0,16"/>
 
-                    <CheckBox x:Name="searchSubfolders" Content="Search subfolders" IsChecked="{Binding SearchSubfolders}" IsEnabled="False" Margin="0,0,0,0"/>
+                    <CheckBox x:Name="searchSubfolders" Content="Search subfolders" IsChecked="{Binding SearchSubfolders}"  Margin="0,0,0,0"/>
 
-                    <CheckBox x:Name="displayFileName" Content="Display file name" IsChecked="{Binding DisplayFileName}" Margin="0,16,0,0"/>
-                    <CheckBox x:Name="displayAttributes" Content="Display age and gender" IsChecked="{Binding DisplayAttributes}" Margin="0,10,0,0"/>
-                    <CheckBox x:Name="getThumbnail" Content="Get thumbnail" IsChecked="{Binding GetThumbnail}" Margin="0,10,0,0"
-                              ToolTip="saves in new 'FaceThumbnails' subfolder of selected folder"/>
-                    <CheckBox x:Name="getMetadata" Content="Get title and date taken" IsChecked="{Binding GetMetadata}" Margin="0,10,0,0"
-                              ToolTip="if available, png's supply date taken, jpg's supply date taken and title"/>
-                    <CheckBox x:Name="getOCR" Content="Get OCR" IsChecked="{Binding GetOCR}" Margin="0,10,0,0"/>
-                    <CheckBox x:Name="getCaption" Content="Get caption (tool tip)" IsChecked="{Binding GetCaption}" Margin="0,10,0,0"/>
-
-                    <TextBlock Margin="0,16,0,4" Text="Search on gender"/>
-                    <StackPanel x:Name="searchGender" Orientation="Horizontal">
-                        <RadioButton x:Name="isMale" Content="Male" IsChecked="{Binding IsMale}" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="isFemale" Content="Female" IsChecked="{Binding IsFemale}" Margin="8,0,4,0"/>
-                        <RadioButton Content="NA" Margin="8,0,4,0"/>
-                    </StackPanel>
-
-                    <CheckBox x:Name="searchAge" Margin="0,10,0,8" Content="Search on age range"
-                              IsChecked="{Binding SearchAge, Mode=TwoWay}"/>
+                    <CheckBox x:Name="searchAge" Margin="0,10,0,8" Content="Match Model Strictness"
+              IsChecked="{Binding SearchAge, Mode=TwoWay}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <TextBlock Width="14">
                             <TextBlock.Text>
                                 <Binding ElementName="rangeSlider" Path="LowerValue"/>
                             </TextBlock.Text>
                         </TextBlock>
-                        <xctk:RangeSlider x:Name="rangeSlider" Width="200" Height="20" Minimum="0" Maximum="100" Step="5"
-                                          LowerValue="{Binding MinAge, Mode=TwoWay}" HigherValue="{Binding MaxAge, Mode=TwoWay}"
-                                          LowerRangeBackground="Bisque" RangeBackground="Salmon" HigherRangeBackground="Bisque"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <xctk:RangeSlider x:Name="rangeSlider" Width="200" Height="20" Minimum="0" Maximum="1" Step="0.1"
+                          LowerValue="{Binding MinAge, Mode=TwoWay}" HigherValue="{Binding MaxAge, Mode=TwoWay}"
+                          LowerRangeBackground="Bisque" RangeBackground="Salmon" HigherRangeBackground="Bisque"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <TextBlock Width="14">
                             <TextBlock.Text>
                                 <Binding ElementName="rangeSlider" Path="HigherValue"/>
@@ -160,48 +133,47 @@
                     <Separator Margin="0,16"/>
 
                     <CheckBox x:Name="matchPerson" Content="Match person" IsChecked="{Binding MatchPerson}"
-                              IsEnabled="{Binding faceProcessor.IsPersonGroupTrained, Mode=TwoWay}"
-                              ToolTip="enabled when selected person has at least one added face"
-                              Margin="0,0,0,0" Width="Auto" HorizontalAlignment="Left"/>
+              IsEnabled="{Binding faceProcessor.IsPersonGroupTrained, Mode=TwoWay}"
+              ToolTip="enabled when person is trained"
+              Margin="0,0,0,0" Width="Auto" HorizontalAlignment="Left"/>
 
                     <TextBlock Margin="0,4,0,0" Text="Select person to match" TextAlignment="Center"/>
 
                     <ComboBox x:Name="personComboBox" Text="{Binding SearchedForPerson, UpdateSourceTrigger=LostFocus}"
-                              ItemsSource="{Binding GroupNames}" IsEditable="True" Margin="0,4,0,2" Width="200"
-                              SelectedItem="{Binding SearchedForPerson}" IsDropDownOpen="{Binding IsPersonComboBoxOpen}"/>
+              ItemsSource="{Binding GroupNames}" IsEditable="True" Margin="0,4,0,2" Width="200"
+              SelectedItem="{Binding SearchedForPerson}" IsDropDownOpen="{Binding IsPersonComboBoxOpen}"/>
 
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Center">
                         <Button x:Name="addPersonButton" Content="Add Person" Command="{Binding AddPersonCommand}"
-                                HorizontalAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Padding="4,2" Background="Bisque"/>
+                HorizontalAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Padding="4,2" Background="Bisque"/>
                         <Button x:Name="deletePersonButton" Content="Delete Person" Command="{Binding DeletePersonCommand}" Margin="16,0,0,0"
-                                IsEnabled="{Binding IsSearchedForPersonNotEmpty}"
-                                ToolTip="opens confirmation dialog"
-                                HorizontalAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Padding="4,2" Background="Bisque"/>
+                IsEnabled="{Binding IsSearchedForPersonNotEmpty}"
+                ToolTip="opens confirmation dialog"
+                HorizontalAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Padding="4,2" Background="Bisque"/>
                     </StackPanel>
 
                     <TextBlock Width="260" Margin="0,8,0,0" TextAlignment="Justify" TextWrapping="Wrap">
-                        Select one or more images of this person, using the Ctrl and Shift keys for multiple selections.
-                        Each selected image should contain only one face. When selection is complete, click 'Add Faces'.
+        Select one or more images of this person, using the Ctrl and Shift keys for multiple selections.
+        Each selected image should contain only one face. When selection is complete, click 'Add Faces'.
                     </TextBlock>
-                    
+
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Center">
                         <Button x:Name="addToPersonButton" Content="Add Faces"
-                                Command="{Binding AddToPersonCommand}" CommandParameter="{Binding ElementName=thumbList, Path=SelectedItems}"
-                                IsEnabled="{Binding IsSearchedForPersonNotEmpty}"
-                                HorizontalAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Padding="4,2" Background="Bisque"/>
-                        <CheckBox x:Name="showFaces" Content="Display" IsChecked="{Binding ShowFaces}"
-                              Margin="36,0,0,0" Width="Auto" VerticalAlignment="Center"/>
+                Command="{Binding AddToPersonCommand}" CommandParameter="{Binding ElementName=thumbList, Path=SelectedItems}"
+                IsEnabled="{Binding IsSearchedForPersonNotEmpty}"
+                HorizontalAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Padding="4,2" Background="Bisque"/>
+                      
                     </StackPanel>
 
                     <TextBlock Width="260" Margin="0,6,0,0" TextAlignment="Justify" TextWrapping="Wrap">
-                        Now select 'Match person' and rerun 'Find Faces' to see images matching just this person.
+        Now select 'Match person' and rerun 'Find Faces' to see images matching just this person.
                     </TextBlock>
                 </StackPanel>
             </Border>
         </Expander>
 
         <TextBlock Name="groupName" Grid.Row="1" Grid.Column="0" Text="{Binding SearchedForPerson}"
-                   Visibility="{Binding ElementName=showFaces, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}"
+                  
                    HorizontalAlignment="Center" VerticalAlignment="Top" TextAlignment="Center"
                    FontSize="13" FontWeight="Bold" Margin="4,0,0,4" Foreground="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
 
@@ -215,6 +187,8 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition/>
@@ -264,7 +238,8 @@
                        ToolTip="total image files with a face matching the search criteria"/>
             <TextBlock Grid.Row="0" Grid.Column="7" Name="faceCountLabel" Text="Matched Person" Style="{StaticResource Row0}"
                        ToolTip="total image files with a face matching the search criteria and selected person"/>
-
+            <Button Grid.Row="0" Grid.Column="8" x:Name="checkIntrudersButton" Content="Check for Intruders" Margin="12,2,2,2"
+          Command="{Binding CheckIntrudersCommand}"/>
             <Button Grid.Row="1" Grid.Column="3" x:Name="cancelButtton" Content="Cancel" Margin="12,2,2,2"
                     Command="{Binding CancelFindFacesCommand}"/>
             <TextBlock Grid.Row="1" Grid.Column="4" Name="processingCount" Text="{Binding ProcessingCount, Mode=TwoWay}"/>

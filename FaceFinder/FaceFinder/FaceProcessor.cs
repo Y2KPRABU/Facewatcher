@@ -26,6 +26,7 @@ namespace FaceFinder
         // Set in GetOrCreatePersonAsync()
         private Person searchedForPerson;
 
+        public IList<Person> RegisteredPersonsList;
         // A trained PersonGroup has at least 1 added face for the specifed person
         // and has successfully completed the training process at least once.
         private bool isPersonGroupTrained;
@@ -70,10 +71,9 @@ namespace FaceFinder
         /// <returns>A list of Person.Name's or an empty list</returns>
         public async Task<IList<Person>> GetAllRegdPeopleAsync()
         {
-            IList<Person> personNames = null;
             try
             {
-                personNames = await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID);
+                RegisteredPersonsList = await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID);
               
             }
             catch (APIErrorException e)
@@ -81,7 +81,7 @@ namespace FaceFinder
                 Debug.WriteLine("GetAllPersonNamesAsync: " + e.Message);
             }
             
-            return personNames;
+            return RegisteredPersonsList;
         }
 
         /// <summary>
@@ -221,17 +221,17 @@ namespace FaceFinder
         /// </summary>
         /// <param name="faceId">PersistedFace.PersistedFaceId</param>
         /// <param name="newImage">On success, contains confidence value</param>
-        /// <returns>Whether <paramref name="faceId"/> matches searchedForPerson</returns>
-        public async Task<bool> MatchFaceAsync(Guid faceId, ImageInfo newImage)
+        /// <returns>Whether <paramref name="faceId"/> matches personToCompare</returns>
+        public async Task<bool> MatchFaceAsync(Guid faceId, ImageInfo newImage, Person personToCompare)
         {
-            if((faceId == Guid.Empty) || (searchedForPerson?.PersonId == null)) { return false; }
+            if((faceId == Guid.Empty) || (personToCompare?.PersonId == null)) { return false; }
 
             VerifyResult results;
             try
             {
                 results = await faceClient.Face.VerifyFaceToPersonAsync(
-                    faceId, searchedForPerson.PersonId, PERSONGROUPID);
-                newImage.Confidence = results.Confidence.ToString("P");
+                    faceId, personToCompare.PersonId, PERSONGROUPID);
+                newImage.Confidence = results.Confidence.ToString("P") + "- with " + personToCompare.Name;
 
             }
             catch (APIErrorException ae)
@@ -240,7 +240,6 @@ namespace FaceFinder
                 return false;
             }
 
-            // TODO: add Confidence slider
             // Default: True if similarity confidence is greater than or equal to 0.5.
             // Can change by specifying VerifyResult.Confidence.
             return results.IsIdentical;

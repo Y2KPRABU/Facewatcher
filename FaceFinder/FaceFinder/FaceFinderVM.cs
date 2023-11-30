@@ -34,9 +34,7 @@ namespace FaceFinder
         private const string _faceEndpoint =
             "https://sundarface.cognitiveservices.azure.com/";
 
-        private readonly string male = Gender.Male.ToString();
-        private readonly string female = Gender.Female.ToString();
-
+   
         private CancellationTokenSource cancellationTokenSource;
         private FileInfo[] imageFiles = Array.Empty<FileInfo>();
 
@@ -169,71 +167,8 @@ namespace FaceFinder
             set => SetProperty(ref searchSubfolders, value);
         }
 
-        private bool displayFileName = true;
-        public bool DisplayFileName
-        {
-            get => displayFileName;
-            set => SetProperty(ref displayFileName, value);
-        }
-        private bool displayAttributes = true;
-        public bool DisplayAttributes
-        {
-            get => displayAttributes;
-            set
-            {
-                SetProperty(ref displayAttributes, value);
-            }
-        }
-        private bool getThumbnail = true;
-        public bool GetThumbnail
-        {
-            get => getThumbnail;
-            set => SetProperty(ref getThumbnail, value);
-        }
-        private bool getMetadata;
-        public bool GetMetadata
-        {
-            get => getMetadata;
-            set => SetProperty(ref getMetadata, value);
-        }
-        private bool getOCR;
-        public bool GetOCR
-        {
-            get => getOCR;
-            set => SetProperty(ref getOCR, value);
-        }
-        private bool getCaption;
-        public bool GetCaption
-        {
-            get => getCaption;
-            set => SetProperty(ref getCaption, value);
-        }
-
-        private bool showFaces;
-        public bool ShowFaces
-        {
-            get => showFaces;
-            set => SetProperty(ref showFaces, value);
-        }
-
-        private bool isMale;
-        public bool IsMale
-        {
-            get => isMale;
-            set => SetProperty(ref isMale, value);
-        }
-        private bool isFemale;
-        public bool IsFemale
-        {
-            get => isFemale;
-            set => SetProperty(ref isFemale, value);
-        }
-        private bool searchAge;
-        public bool SearchAge
-        {
-            get => searchAge;
-            set => SetProperty(ref searchAge, value);
-        }
+        
+       
 
         private bool matchPerson;
         public bool MatchPerson
@@ -259,7 +194,7 @@ namespace FaceFinder
             }
         }
 
-        private double minAge = 10, maxAge = 80;
+        private double minAge = 0, maxAge = 1.0;
         public double MinAge
         {
             get => minAge;
@@ -273,6 +208,18 @@ namespace FaceFinder
     #endregion Bound properties
 
     #region Commands
+        private ICommand checkIntrudersCommand;
+        public ICommand CheckIntrudersCommand
+        {
+            get
+            {
+                return checkIntrudersCommand ??
+                    (checkIntrudersCommand = new RelayCommand(
+                        p => true, async p => await CheckIntruders()));
+            }
+        }
+
+
         private ICommand selectFolderCommand;
         public ICommand SelectFolderCommand
         {
@@ -373,17 +320,29 @@ namespace FaceFinder
 
         public ImageProcessor imageProcessor { get; set; }
         public FaceProcessor faceProcessor { get; set; }
-        public ObservableCollection<ImageInfo> ImageInfos { get; set; }
+        /// <summary>
+        /// Contains Face Information
+        /// </summary>
+        public ObservableCollection<ImageInfo> ImagesWithFaces { get; set; }
+        public ObservableCollection<ImageInfo> ImagesMatched { get; private set; }
+        public ObservableCollection<ImageInfo> ImagesIntruders { get; private set; }
         public ObservableCollection<ImageInfo> GroupInfos { get; set; }
         public ObservableCollection<string> GroupNames { get; set; }
+        /// <summary>
+        /// Contains Raw Folder images to scan
+        /// </summary>
         public ObservableCollection<MovieData> ImagesToScan { get; set; }
 
         public FaceFinderVM()
         {
             //GetDataFromIsolatedStorage();
-            ImageInfos = new ObservableCollection<ImageInfo>();
+            ImagesWithFaces = new ObservableCollection<ImageInfo>();
+            ImagesMatched = new ObservableCollection<ImageInfo>();
+            ImagesIntruders = new ObservableCollection<ImageInfo>();
+
             GroupInfos = new ObservableCollection<ImageInfo>();
             GroupNames = new ObservableCollection<string>();
+            
             ImagesToScan = new ObservableCollection<MovieData>();
 
             SetupVisionServices();
@@ -413,7 +372,7 @@ namespace FaceFinder
 
             isFindFacesButtonEnabled = false;
 
-            ImageInfos.Clear();
+            ImagesWithFaces.Clear();
 
             isCancelButtonEnabled = true;
             cancellationTokenSource = new CancellationTokenSource();
@@ -475,16 +434,14 @@ namespace FaceFinder
                         newImage.FilePath = file.DirectoryName + Path.DirectorySeparatorChar + file.Name;
                         newImage.FileName = file.Name;
 
-                        if (getMetadata)
-                        {
+                       
                             GetImageMetadata(file, newImage);
-                        }
+                        
 
                         string attributes = string.Empty;
-                        bool isImageMatch = false;
-
-                        foreach (DetectedFace face in detectedfaceList)
+                      foreach (DetectedFace face in detectedfaceList)
                         {
+                            
                           /*  double? age = face.FaceAttributes.Age;
                             string gender = face.FaceAttributes.Gender.ToString();
 
@@ -494,57 +451,39 @@ namespace FaceFinder
                             attributes += gender + " " + age + "   ";
 */
                             matchedCount++;
-
-                            // If match on face, call faceProcessor
-                            if (MatchPerson && faceProcessor.IsPersonGroupTrained)
-                            {
-                                bool isFaceMatch = await faceProcessor.MatchFaceAsync(
-                                    (Guid)face.FaceId, newImage);
-                                     await Task.Delay(1000);
-                                isImageMatch |= isFaceMatch;
-                            }
+                            newImage.FoundFace = face;
+                          
                         }
 
                         // No faces matched search criteria
                         if (matchedCount == 0) { continue; }
-                        if (MatchPerson && !isImageMatch) { continue; }
 
                         newImage.Attributes = attributes;
                         FaceImageCount += matchedCount;
 
                         var tasks = new List<Task>();
 
-                        if (getThumbnail)
-                        {
+                      
                             Task thumbTask = imageProcessor.ProcessImageFileForThumbAsync(file, newImage, thumbnailsFolder);
                             tasks.Add(thumbTask);
-                        }
-                        else
-                        {
-                            // Use local image
-                            newImage.ThumbUrl = file.FullName;
-                        }
-                        if (getCaption)
-                        {
+                       
                             Task captionTask = imageProcessor.ProcessImageFileForCaptionAsync(file, newImage);
                             tasks.Add(captionTask);
-                        }
-                        if (getOCR)
-                        {
-                            Task ocrTask = imageProcessor.ProcessImageFileForTextAsync(file, newImage);
-                            tasks.Add(ocrTask);
-                        }
+                       
+                       //     Task ocrTask = imageProcessor.ProcessImageFileForTextAsync(file, newImage);
+                        //    tasks.Add(ocrTask);
+                      
 
                         if (tasks.Count != 0)
                         {
                             await Task.WhenAll(tasks);
                         }
 
-                        ImageInfos.Add(newImage);
+                        ImagesWithFaces.Add(newImage);
 
                         if (MatchPerson)
                         {
-                            FaceCount = ImageInfos.Count;
+                            FaceCount = ImagesWithFaces.Count;
                         }
                     }
                 }
@@ -563,10 +502,33 @@ namespace FaceFinder
                 }
             }
         }
+        /// <summary>
+        /// Compares 
+        /// </summary>
+        /// <returns></returns>
+        private async Task CheckIntruders()
+        {
+            // If match on face, call faceProcessor
+           // if (faceProcessor.IsPersonGroupTrained)
+            {
+                foreach (Person p in faceProcessor.RegisteredPersonsList)
+                { // gets all the faces which was found in FindFaces scan and compares to selected person
+                foreach (ImageInfo faceimage in ImagesWithFaces)
+                {
+                    bool isFaceMatch = await faceProcessor.MatchFaceAsync(
+                        (Guid)faceimage.FoundFace.FaceId, faceimage, p);
+                    await Task.Delay(1000);
+                        if (!isFaceMatch)
+                        { ImagesIntruders.Add(faceimage); }
+                        else
+                        { ImagesMatched.Add(faceimage); }
 
+                }
+                }
+            }
+        }
         private string GetImageMetadata(FileInfo file, ImageInfo newImage)
         {
-            if (!getMetadata) { return string.Empty; }
 
             var dateTaken = string.Empty;
             var title = string.Empty;
@@ -656,7 +618,6 @@ namespace FaceFinder
 
             IList<ImageInfo> items = selectedItems.Cast<ImageInfo>().ToList();
             await faceProcessor.AddFacesToPersonAsync(items, GroupInfos);
-            ShowFaces = true;
         }
 
 

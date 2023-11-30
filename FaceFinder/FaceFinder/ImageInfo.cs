@@ -1,4 +1,6 @@
-﻿namespace FaceFinder
+﻿using Microsoft.Azure.CognitiveServices.Vision.Face.Models;
+
+namespace FaceFinder
 {
     public class ImageInfo
     {
@@ -10,5 +12,6 @@
         public string OcrResult { get; set; } = string.Empty;
         public string ThumbUrl { get; set; } = string.Empty; //"Assets/FaceFinder.jpg";
         public string Confidence { get; set; } = string.Empty;
+        public DetectedFace FoundFace { get; set; } = new DetectedFace();
     }
 }
