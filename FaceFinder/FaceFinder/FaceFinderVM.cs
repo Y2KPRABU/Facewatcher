@@ -39,19 +39,7 @@ namespace FaceFinder
         private FileInfo[] imageFiles = Array.Empty<FileInfo>();
 
     #region Bound properties
-        private int splashZIndex = 1;
-        public int SplashZIndex
-        {
-            get => splashZIndex;
-            set => SetProperty(ref splashZIndex, value);
-        }
-        private bool splashVisibilty = true;
-        public bool SplashVisibilty
-        {
-            get => splashVisibilty;
-            set => SetProperty(ref splashVisibilty, value);
-        }
-
+      
         private string computerVisionKey = "5e78b106c2994cb7864ba96362d2b581";
         public string ComputerVisionKey
         {
@@ -83,6 +71,7 @@ namespace FaceFinder
             }
         }
         private string faceEndpoint = _faceEndpoint;
+       public string NewPersonName { get; set; }
         public string FaceEndpoint
         {
             get => faceEndpoint;
@@ -130,16 +119,7 @@ namespace FaceFinder
             set => SetProperty(ref faceCount, value);
         }
 
-        private string searchedForPerson;
-        public string SearchedForPerson
-        {
-            get => searchedForPerson;
-            set
-            {
-                SetProperty(ref searchedForPerson, value);
-                AddPersonCommand.Execute(string.Empty);
-            }
-        }
+     
 
         private string selectedFolder = string.Empty;
         public string SelectedFolder
@@ -168,14 +148,7 @@ namespace FaceFinder
         }
 
         
-       
-
-        private bool matchPerson;
-        public bool MatchPerson
-        {
-            get => matchPerson;
-            set => SetProperty(ref matchPerson, value);
-        }
+      
 
         private bool isPersonComboBoxOpen;
         public bool IsPersonComboBoxOpen
@@ -187,7 +160,7 @@ namespace FaceFinder
                 SetProperty(ref isPersonComboBoxOpen, value);
 
                 // Populates personComboBox.
-                if ((value && GroupNames.Count == 0) || !value)
+                if ((value && RegdPeopleNames.Count == 0) || !value)
                 {
                     GetNamesCommand.Execute(string.Empty);
                 }
@@ -238,29 +211,22 @@ namespace FaceFinder
             {
                 return getNamesCommand ??
                     (getNamesCommand = new RelayCommand(
-                        p => true, async p => await GetPersonNamesAsync()));
+                        p => true, async p => await LoadRegdPeopleAsync()));
             }
         }
 
         private bool isAddPersonButtonEnabled = true;
-        private ICommand addPersonCommand;
-        public ICommand AddPersonCommand
+      
+        private async Task CreatePersonAsync(string person)
         {
-            get
+           bool personCreated=   await faceProcessor.CreatePersonAsync(person);
+            if (personCreated)
             {
-                return addPersonCommand ?? (addPersonCommand = new RelayCommand(
-                    p => isAddPersonButtonEnabled,
-                    async p => await AddPersonAsync(searchedForPerson)));
+                await LoadRegdPeopleAsync();
             }
-        }
-        private async Task AddPersonAsync(string person)
-        {
-            await faceProcessor.GetOrCreatePersonAsync(person, GroupInfos);
-
-            // Disable person matching if PersonGroup not trained for this person
-            if (!faceProcessor.IsPersonGroupTrained) { MatchPerson = false; }
-
-            await GetPersonNamesAsync();
+            {
+                MessageBox.Show("User Already exists or Error creating users");
+            }
         }
 
         private bool isDeletePersonButtonEnabled = true;
@@ -271,19 +237,30 @@ namespace FaceFinder
             {
                 return deletePersonCommand ?? (deletePersonCommand = new RelayCommand(
                     p => isDeletePersonButtonEnabled, 
-                    async p => await DeletePersonAsync(searchedForPerson)));
+                    async p => await DeletePersonAsync(NewPersonName)));
             }
         }
         private async Task DeletePersonAsync(string person)
         {
-            await faceProcessor.DeletePersonAsync(GroupInfos, GroupNames);
-            if (GroupNames.Contains(searchedForPerson))
+           
+            await faceProcessor.DeletePersonAsync( person, true);
+            if (RegdPeopleNames.Contains(NewPersonName))
             {
-                GroupNames.Remove(searchedForPerson);
+                RegdPeopleNames.Remove(NewPersonName);
             }
         }
 
         private bool isAddToPersonButtonEnabled = true;
+
+        private ICommand createPersonCommand;
+         public ICommand CreatePersonCommand
+        {
+            get
+            {
+                return createPersonCommand ?? (createPersonCommand = new RelayCommand(p=>true
+                    , async p => await CreatePersonAsync(NewPersonName)));
+            }
+        }
         private ICommand addToPersonCommand;
         public ICommand AddToPersonCommand
         {
@@ -326,8 +303,8 @@ namespace FaceFinder
         public ObservableCollection<ImageInfo> ImagesWithFaces { get; set; }
         public ObservableCollection<ImageInfo> ImagesMatched { get; private set; }
         public ObservableCollection<ImageInfo> ImagesIntruders { get; private set; }
-        public ObservableCollection<ImageInfo> GroupInfos { get; set; }
-        public ObservableCollection<string> GroupNames { get; set; }
+        public ObservableCollection<ImageInfo> RegdPeopleImageInfos { get; set; }
+        public ObservableCollection<string> RegdPeopleNames { get; set; }
         /// <summary>
         /// Contains Raw Folder images to scan
         /// </summary>
@@ -340,8 +317,8 @@ namespace FaceFinder
             ImagesMatched = new ObservableCollection<ImageInfo>();
             ImagesIntruders = new ObservableCollection<ImageInfo>();
 
-            GroupInfos = new ObservableCollection<ImageInfo>();
-            GroupNames = new ObservableCollection<string>();
+            RegdPeopleImageInfos = new ObservableCollection<ImageInfo>();
+            RegdPeopleNames = new ObservableCollection<string>();
             
             ImagesToScan = new ObservableCollection<MovieData>();
 
@@ -481,10 +458,7 @@ namespace FaceFinder
 
                         ImagesWithFaces.Add(newImage);
 
-                        if (MatchPerson)
-                        {
                             FaceCount = ImagesWithFaces.Count;
-                        }
                     }
                 }
                 // Catch and display Face errors.
@@ -511,13 +485,15 @@ namespace FaceFinder
             // If match on face, call faceProcessor
            // if (faceProcessor.IsPersonGroupTrained)
             {
+                if (faceProcessor.RegisteredPersonsList == null)
+                    return;
                 foreach (Person p in faceProcessor.RegisteredPersonsList)
                 { // gets all the faces which was found in FindFaces scan and compares to selected person
                 foreach (ImageInfo faceimage in ImagesWithFaces)
                 {
                     bool isFaceMatch = await faceProcessor.MatchFaceAsync(
                         (Guid)faceimage.FoundFace.FaceId, faceimage, p);
-                    await Task.Delay(1000);
+                    await Task.Delay(500);
                         if (!isFaceMatch)
                         { ImagesIntruders.Add(faceimage); }
                         else
@@ -527,6 +503,12 @@ namespace FaceFinder
                 }
             }
         }
+        /// <summary>
+        /// Local File Properties
+        /// </summary>
+        /// <param name="file"></param>
+        /// <param name="newImage"></param>
+        /// <returns></returns>
         private string GetImageMetadata(FileInfo file, ImageInfo newImage)
         {
 
@@ -564,9 +546,9 @@ namespace FaceFinder
         }
 
         // Called by IsPersonComboBoxOpen setter
-        private async Task GetPersonNamesAsync()
+        private async Task LoadRegdPeopleAsync()
         {
-            if (GroupNames.Count > 0)
+            if (RegdPeopleNames.Count > 0)
                 return;
             // Wait 2 seconds
             await Task.Delay(2000);
@@ -579,9 +561,9 @@ namespace FaceFinder
             }
             foreach (Person person in personNames)
             {
-                if (!GroupNames.Contains(person.Name))
+                if (!RegdPeopleNames.Contains(person.Name))
                 {
-                    GroupNames.Add(person.Name);
+                    RegdPeopleNames.Add(person.Name);
                     IList<string> facePaths= await faceProcessor.GetFaceImagePathsAsync(person);
                     if (facePaths == null)
 
@@ -592,32 +574,36 @@ namespace FaceFinder
                         {
                             ImageInfo groupInfo = new ImageInfo();
                             groupInfo.FilePath = person.UserData;
-                            GroupInfos.Add(groupInfo);
+                            RegdPeopleImageInfos.Add(groupInfo);
                         }
                     }
                     else
-                        // Get all facepaths for the person
+                        // Get all facepaths returned for the person in above API
                         foreach (string facePath in facePaths)
                         {
                             ImageInfo groupInfo = new ImageInfo(); 
                             groupInfo.FilePath = facePath;
-                            GroupInfos.Add(groupInfo);
+                            RegdPeopleImageInfos.Add(groupInfo);
                         }
                         
                     
                 }
             }
         }
-
+        /// <summary>
+        /// Adds Faces to Selected Person
+        /// </summary>
+        /// <param name="selectedThumbnails"></param>
+        /// <returns></returns>
         private async Task AddToPersonAsync(object selectedThumbnails)
         {
-            if (string.IsNullOrWhiteSpace(SearchedForPerson)) { return; }
+            if (string.IsNullOrWhiteSpace(NewPersonName)) { return; }
 
             IList selectedItems = (IList)selectedThumbnails;
             if(selectedItems.Count == 0) { return; }
 
             IList<ImageInfo> items = selectedItems.Cast<ImageInfo>().ToList();
-            await faceProcessor.AddFacesToPersonAsync(items, GroupInfos);
+            await faceProcessor.AddFacesToPersonAsync(items, RegdPeopleImageInfos);
         }
 
 
@@ -637,10 +623,7 @@ namespace FaceFinder
                 return;
             }
             
-            // Hide splash image.
-            SplashZIndex = 0;
-            SplashVisibilty = false;
-
+       
             isFindFacesButtonEnabled = true;
         }
 
@@ -704,6 +687,10 @@ namespace FaceFinder
             }
             return allImageFiles;
         }
-#endregion
+
+        private string selPersonName;
+
+        public string SelPersonName { get => selPersonName; set => SetProperty(ref selPersonName, value); }
+        #endregion
     }
 }

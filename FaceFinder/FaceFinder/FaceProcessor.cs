@@ -23,8 +23,8 @@ namespace FaceFinder
         private const string PERSONGROUPID = "ff-person-group-id";
         private readonly Person emptyPerson = new Person(Guid.Empty, string.Empty);
 
-        // Set in GetOrCreatePersonAsync()
-        private Person searchedForPerson;
+        // Set in CreatePersonAsync()
+        private Person NewPersonCreated;
 
         public IList<Person> RegisteredPersonsList;
         // A trained PersonGroup has at least 1 added face for the specifed person
@@ -39,7 +39,7 @@ namespace FaceFinder
         public FaceProcessor(IFaceClient faceClient)
         {
             this.faceClient = faceClient;
-            searchedForPerson = emptyPerson;
+           
         }
 
         /// <summary>
@@ -84,88 +84,43 @@ namespace FaceFinder
             return RegisteredPersonsList;
         }
 
-        /// <summary>
-        /// Gets or creates a PersonGroup with PERSONGROUPID
-        /// </summary>
-        public async Task GetOrCreatePersonGroupAsync()
-        {
-            try
-            {
-                PersonGroup personGroup= null;
-
-                // Get PersonGroup if it exists.
-                IList<PersonGroup> groups = await faceClient.PersonGroup.ListAsync();
-                foreach (PersonGroup group in groups)
-                {
-                    if (group.PersonGroupId == PERSONGROUPID)
-                    {
-                        personGroup = group;
-                        break;
-                    }
-                }
-
-                if (personGroup == null)
-                {
-                    // PersonGroup doesn't exist, create it.
-                    await faceClient.PersonGroup.CreateAsync(PERSONGROUPID);
-                    personGroup = (await faceClient.PersonGroup.ListAsync())[0];
-                }
-                Debug.WriteLine("GetOrCreatePersonGroupAsync: " + personGroup.PersonGroupId);
-            }
-            catch (APIErrorException ae)
-            {
-                Debug.WriteLine("GetOrCreatePersonGroupAsync: " + ae.Message);
-            }
-        }
+       
 
         /// <summary>
-        /// Gets or creates a PersonGroupPerson
+        /// creates a Person in PersonGroupPerson
         /// </summary>
         /// <param name="name">PersonGroupPerson.Name</param>
         /// <param name="GroupInfos">A collection specifying the file paths of images associated with <paramref name="name"/></param>
-        public async Task GetOrCreatePersonAsync(string name, ObservableCollection<ImageInfo> GroupInfos)
+        public async Task<bool> CreatePersonAsync(string name)
         {
-            if (string.IsNullOrWhiteSpace(name)) { return; }
+            if (string.IsNullOrWhiteSpace(name)) { return false; }
             Debug.WriteLine("GetOrCreatePersonAsync: " + name);
 
-            GroupInfos.Clear();
             IsPersonGroupTrained = false;
 
-            searchedForPerson = emptyPerson;
             string personName = ConfigurePersonName(name);
 
-            try
-            {  
-               IList<Person> people =
-                    await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID);
-
+        
                 // Get Person if it exists.
-                foreach(Person person in people)
+                foreach(Person person in RegisteredPersonsList)
                 {
                     if (person.Name.Equals(personName))
                     {
-                        searchedForPerson = person;
-                        if(searchedForPerson.PersistedFaceIds.Count > 0)
-                        {
-                            await DisplayFacesAsync(GroupInfos);
-                            IsPersonGroupTrained = true;
-                        }
-                        return;
+                      
+                        return false;
                     }
                 }
-    await faceClient.PersonGroup.CreateAsync(PERSONGROUPID, personName,String.Empty);
-               // Person doesn't exist, create it.
-                await faceClient.PersonGroupPerson.CreateAsync(PERSONGROUPID, personName);
-
-                // MUST re-query to get completely formed PersonGroupPerson
-                searchedForPerson = (await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID))[0];
-                return;
+            try {
+                // await faceClient.PersonGroup.CreateAsync(PERSONGROUPID, personName,String.Empty);
+                // Person doesn't exist, create it.
+                NewPersonCreated= await faceClient.PersonGroupPerson.CreateAsync(PERSONGROUPID, personName);
+                return true;
+            
             }
             catch (APIErrorException ae)
             {
                 Debug.WriteLine("GetOrCreatePersonAsync: " + ae.Message);
-                searchedForPerson = emptyPerson;
-            }
+                return false;            }
         }
 
         // Each image should contain only 1 detected face; otherwise, must specify face rectangle.
@@ -177,40 +132,27 @@ namespace FaceFinder
         public async Task AddFacesToPersonAsync(
             IList<ImageInfo> selectedItems, ObservableCollection<ImageInfo> GroupInfos)
         {
-            if ((searchedForPerson == null) || (searchedForPerson == emptyPerson))
-            {
-                Debug.WriteLine("AddFacesToPersonAsync, no searchedForPerson");
-                return;
-            }
-
-            IList<string> faceImagePaths = await GetFaceImagePathsAsync(searchedForPerson);
-
-            foreach (ImageInfo info in selectedItems)
+               foreach (ImageInfo info in selectedItems)
             {
                 string imagePath = info.FilePath;
 
                 // Check for duplicate images
-                if (faceImagePaths.Contains(imagePath)) { continue; } // Face already added to Person
 
                 using (FileStream stream = new FileStream(info.FilePath, FileMode.Open))
                 {
                     PersistedFace persistedFace =
                         await faceClient.PersonGroupPerson.AddFaceFromStreamAsync(
-                            PERSONGROUPID, searchedForPerson.PersonId, stream, imagePath);
+                            PERSONGROUPID, NewPersonCreated.PersonId, stream, imagePath);
                 }
 
                 GroupInfos.Add(info);
             }
 
-            // MUST re-query to get updated PersonGroupPerson
-            searchedForPerson = (await faceClient.PersonGroupPerson.ListAsync(PERSONGROUPID))[0];
-
-            if(searchedForPerson.PersistedFaceIds.Count == 0)
-            {
+        
+          
                 IsPersonGroupTrained = false;
-                return;
-            }
-
+           
+            // Do Training and wait for training complete
             await faceClient.PersonGroup.TrainAsync(PERSONGROUPID);
 
             IsPersonGroupTrained = await GetTrainingStatusAsync();
@@ -245,22 +187,7 @@ namespace FaceFinder
             return results.IsIdentical;
         }
 
-        /// <summary>
-        /// Sets 'GroupInfos', which specifies the file paths of images associated with searchedForPerson
-        /// </summary>
-        /// <param name="GroupInfos">On success, contains image info associated with searchedForPerson</param>
-        public async Task DisplayFacesAsync(ObservableCollection<ImageInfo> GroupInfos)
-        {
-            IList<string> faceImagePaths = await GetFaceImagePathsAsync(searchedForPerson);
-            if(faceImagePaths == Array.Empty<string>()) { return; }
-
-            foreach (string path in faceImagePaths)
-            {
-                ImageInfo groupInfo = new ImageInfo();
-                groupInfo.FilePath = path;
-                GroupInfos.Add(groupInfo);
-            }
-        }
+ 
 
         /// <summary>
         /// Deletes searchedForPerson
@@ -268,28 +195,35 @@ namespace FaceFinder
         /// <param name="GroupInfos"></param>
         /// <param name="GroupNames"></param>
         /// <param name="askFirst">true to display a confirmation dialog</param>
-        public async Task DeletePersonAsync(ObservableCollection<ImageInfo> GroupInfos,
-            ObservableCollection<string> GroupNames, bool askFirst = true)
+        public async Task DeletePersonAsync(
+            string NameofPersonToRemove, bool askFirst = true)
         {
             MessageBoxResult result;
             try
             {
                 result = askFirst ?
-                    MessageBox.Show("Delete " + searchedForPerson + " and its training images?",
-                        "Delete " + searchedForPerson, MessageBoxButton.OKCancel, MessageBoxImage.Warning) :
+                    MessageBox.Show("Delete " + NameofPersonToRemove + " and its training images?",
+                        "Delete " + NameofPersonToRemove, MessageBoxButton.OKCancel, MessageBoxImage.Warning) :
                     MessageBoxResult.OK;
 
                 if (result == MessageBoxResult.OK)
                 {
-                    GroupInfos.Clear();
-                    await faceClient.PersonGroupPerson.DeleteAsync(PERSONGROUPID, searchedForPerson.PersonId);
-                    string personName = searchedForPerson.Name.Replace("_", " ");
-                    if (GroupNames.Contains(personName))
+                    Person personToDel = null;
+                    foreach (Person p in RegisteredPersonsList)
                     {
-                        GroupNames.Remove(personName);
-                        Debug.WriteLine("DeletePersonAsync: " + personName);
+                        if (p.Name.Equals(NameofPersonToRemove))
+                        {
+                            personToDel = p; 
+                            break;
+                        }
                     }
-                    searchedForPerson = emptyPerson;
+                    await faceClient.PersonGroupPerson.DeleteAsync(PERSONGROUPID, personToDel.PersonId);
+                    if (RegisteredPersonsList.Contains(personToDel))
+                    {
+                        RegisteredPersonsList.Remove(personToDel);
+                        Debug.WriteLine("DeletePersonAsync: " + NameofPersonToRemove);
+                    }
+                    ;
                 }
             }
             catch (APIErrorException ae)
