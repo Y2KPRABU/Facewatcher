@@ -53,7 +53,7 @@ namespace FaceFinder
             {
                 return await faceClient.Face.DetectWithStreamAsync(stream, true, false,
                     new FaceAttributeType[]
-                        { FaceAttributeType.Glasses});
+                        { FaceAttributeType.Glasses, FaceAttributeType.Smile});
             }
             catch (APIErrorException e)
             {
@@ -100,16 +100,17 @@ namespace FaceFinder
 
             string personName = ConfigurePersonName(name);
 
-        
-                // Get Person if it exists.
-                foreach(Person person in RegisteredPersonsList)
+            if (RegisteredPersonsList != null)
+            { // Get Person if it exists.
+                foreach (Person person in RegisteredPersonsList)
                 {
                     if (person.Name.Equals(personName))
                     {
-                      
+
                         return false;
                     }
                 }
+            }
             try {
                 // await faceClient.PersonGroup.CreateAsync(PERSONGROUPID, personName,String.Empty);
                 // Person doesn't exist, create it.
@@ -138,7 +139,7 @@ namespace FaceFinder
 
                 // Check for duplicate images
 
-                using (FileStream stream = new FileStream(info.FilePath, FileMode.Open))
+                using (FileStream stream = new FileStream(info.FilePath, FileMode.Open, FileAccess.Read,FileShare.Read))
                 {
                     PersistedFace persistedFace =
                         await faceClient.PersonGroupPerson.AddFaceFromStreamAsync(
@@ -153,7 +154,7 @@ namespace FaceFinder
                 IsPersonGroupTrained = false;
            
             // Do Training and wait for training complete
-            await faceClient.PersonGroup.TrainAsync(PERSONGROUPID);
+             await faceClient.PersonGroup.TrainAsync(PERSONGROUPID);
 
             IsPersonGroupTrained = await GetTrainingStatusAsync();
         }
@@ -179,6 +180,7 @@ namespace FaceFinder
             catch (APIErrorException ae)
             {
                 Debug.WriteLine("MatchFaceAsync: " + ae.Message);
+                newImage.Confidence = "No Match with" + personToCompare.Name;
                 return false;
             }
 

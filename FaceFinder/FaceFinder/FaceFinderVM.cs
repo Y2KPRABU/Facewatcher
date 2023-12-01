@@ -224,6 +224,7 @@ namespace FaceFinder
             {
                 await LoadRegdPeopleAsync();
             }
+            else
             {
                 MessageBox.Show("User Already exists or Error creating users");
             }
@@ -237,16 +238,16 @@ namespace FaceFinder
             {
                 return deletePersonCommand ?? (deletePersonCommand = new RelayCommand(
                     p => isDeletePersonButtonEnabled, 
-                    async p => await DeletePersonAsync(NewPersonName)));
+                    async p => await DeletePersonAsync(SelPersonName)));
             }
         }
         private async Task DeletePersonAsync(string person)
         {
            
             await faceProcessor.DeletePersonAsync( person, true);
-            if (RegdPeopleNames.Contains(NewPersonName))
+            if (RegdPeopleNames.Contains(person))
             {
-                RegdPeopleNames.Remove(NewPersonName);
+                RegdPeopleNames.Remove(person);
             }
         }
 
@@ -399,7 +400,7 @@ namespace FaceFinder
                         detectedfaceList = await faceProcessor.GetFaceListAsync(stream);
                          await Task.Delay(1000);
                     }
-
+                   
                     // Ignore image files without a detected face
                     if (detectedfaceList.Count > 0)
                     {
@@ -531,6 +532,7 @@ namespace FaceFinder
                     {
                         title = bitmapMetadata?.Title;
                     }
+                    
                 }
             }
             catch (NotSupportedException e)

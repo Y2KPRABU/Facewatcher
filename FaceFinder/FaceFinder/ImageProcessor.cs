@@ -39,6 +39,8 @@ namespace FaceFinder
                             thumbWidth, thumbHeight, readStream, true))
                 {
                     thumbStream.CopyTo(writeStream);
+                    thumbStream.Close();
+                    thumbStream.Dispose();
                 }
                 newImage.ThumbUrl = thumbUrl;
                 return thumbUrl;
@@ -57,7 +59,7 @@ namespace FaceFinder
             ImageDescription description;
             try
             {
-                using (FileStream stream = file.OpenRead())
+                using (FileStream stream = file.OpenRead( ))
                 {
                     description = await computerVisionClient.DescribeImageInStreamAsync(stream);
                 }
